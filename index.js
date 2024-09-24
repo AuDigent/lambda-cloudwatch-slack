@@ -8,8 +8,6 @@ const kmsClient = buildClient(
 )
 
 let hookUrl;
-const baseSlackMessage = {}
-
 
 function postMessage(message, callback) {
     const body = JSON.stringify(message);
@@ -65,13 +63,34 @@ function handleElasticBeanstalk(event, context) {
     const abortedOperation = message.indexOf(" aborted operation.");
     const abortedDeployment = message.indexOf("some instances may have deployed the new application version");
 
-    let color = "good";
 
-    if (stateRed != -1 || stateSevere != -1 || butWithErrors != -1 || noPermission != -1 || failedDeploy != -1 || failedConfig != -1 || failedQuota != -1 || unsuccessfulCommand != -1) {
+    const isDangerAlert = (
+        stateRed !== -1
+        || stateSevere !== -1
+        || butWithErrors !== -1
+        || noPermission !== -1
+        || failedDeploy !== -1
+        || failedConfig !== -1
+        || failedQuota !== -1
+        || unsuccessfulCommand !== -1
+    );
+    const isWarningAlert = (
+        stateYellow !== -1
+        || stateDegraded !== -1
+        || stateInfo !== -1
+        || removedInstance !== -1
+        || addingInstance !== -1
+        || abortedOperation !== -1
+        || abortedDeployment !== -1
+    );
+
+    let color;
+    if (isDangerAlert) {
         color = "danger";
-    }
-    if (stateYellow != -1 || stateDegraded != -1 || stateInfo != -1 || removedInstance != -1 || addingInstance != -1 || abortedOperation != -1 || abortedDeployment != -1) {
-        color = "warning";
+    } else if (isWarningAlert) {
+        color = "warning"
+    } else {
+        color = "good"
     }
 
     const slackMessage = {
@@ -88,7 +107,7 @@ function handleElasticBeanstalk(event, context) {
         ]
     };
 
-    return _.merge(slackMessage, baseSlackMessage);
+    return slackMessage
 }
 
 function handleCodeDeploy(event, context) {
@@ -134,7 +153,7 @@ function handleCodeDeploy(event, context) {
         ]
     };
 
-    return _.merge(slackMessage, baseSlackMessage);
+    return slackMessage
 }
 
 function handleCodePipeline(event, context) {
@@ -142,12 +161,13 @@ function handleCodePipeline(event, context) {
     const timestamp = (new Date(event.Records[0].Sns.Timestamp)).getTime() / 1000;
     const fields = [];
     let message;
+    let header;
     let color = "warning";
     let changeType = "";
 
     try {
         message = JSON.parse(event.Records[0].Sns.Message);
-        detailType = message['detail-type'];
+        const detailType = message['detail-type'];
 
         if (detailType === "CodePipeline Pipeline Execution State Change") {
             changeType = "";
@@ -226,7 +246,8 @@ function handleElasticache(event, context) {
             }
         ]
     };
-    return _.merge(slackMessage, baseSlackMessage);
+
+    return slackMessage
 }
 
 function handleCloudWatch(event, context) {
@@ -279,7 +300,8 @@ function handleCloudWatch(event, context) {
             }
         ]
     };
-    return _.merge(slackMessage, baseSlackMessage);
+
+    return slackMessage
 }
 
 function handleAutoScaling(event, context) {
@@ -310,7 +332,8 @@ function handleAutoScaling(event, context) {
             }
         ]
     };
-    return _.merge(slackMessage, baseSlackMessage);
+
+    return slackMessage
 }
 
 function handleCatchAll(event, context) {
@@ -351,7 +374,7 @@ function handleCatchAll(event, context) {
         ]
     }
 
-    return _.merge(slackMessage, baseSlackMessage);
+    return slackMessage
 }
 
 function processEvent(event, context) {
